@@ -1,6 +1,6 @@
 ---
 name: appstore-submit
-description: 端到端把 iOS App 提交到 App Store 审核的实战流程：xcodebuild 归档上传、App Store Connect 网页自动化填写元数据/截图/隐私/定价/分级、提交审核与 TestFlight。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」或需要复用 ASC 表单自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码等）。
+description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」或需要复用 ASC 自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码等）。
 ---
 
 # App Store 提交（appstore-submit）
@@ -12,7 +12,26 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：xc
 - macOS + Xcode（`xcodebuild` 可用），App 已能用 Release 配置编译。
 - Apple Developer Program 付费账户；明确用**哪个团队**（个人账户 vs 公司团队，勿混）。
 - 用户已明确授权：创建 App ID、建 App 记录、上传构建、提交审核。提交审核是对外动作，**必须拿到用户明确指令才执行**。
-- 需要浏览器自动化能力操作 App Store Connect（ASC）网页。ASC 无稳定公开写 API 时，浏览器是唯一通路；自动化纪律见 `references/browser-automation.md`。
+
+## 两条执行路线（先选路线再走流程）
+
+**路线 A：API 工具脚本化（首选，省 token、可复现、可进 CI）**
+
+用 **App Store Connect API Key**（`.p8` + Key ID + Issuer ID，ASC「用户和访问 → 密钥/集成」页生成，需管理职能）驱动：
+
+- `fastlane`（Ruby 全家桶：`gym` 打包、`match` 签名、`pilot` TestFlight、`deliver` 元数据/截图/提审）——**有 Android 产品线时用它做双端统一主线**（Android 侧 `supply` 走 Google Play）。
+- `asc`（App Store Connect CLI，Go 单二进制，`brew install asc`，TTY 感知 JSON 输出）——iOS ASC 轻量快查/排障备用；仅 iOS 单项目时可作主线。
+- 二者底层都是 Apple 官方 App Store Connect API。API Key 无 2FA、不会话过期，CI 友好。
+
+**路线 B：浏览器自动化（补齐 API 覆盖不到的部分）**
+
+以下操作历史上只能网页做（或 API 覆盖不全），需要浏览器自动化能力：
+
+- **App 隐私问卷的「发布」动作**、年龄分级分步问卷（本 skill 踩坑重灾区）
+- App 记录创建、bundle id 换绑等一次性操作
+- 纪律见 `references/browser-automation.md`
+
+**推荐组合**：API 工具做元数据/上传/提审主线，浏览器只补隐私发布与分级问卷。工具对比、API Key 生成步骤和命令模板见 `references/toolchain.md`。
 
 ## 总流程（顺序执行，每步验证后再进下一步）
 
@@ -47,6 +66,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：xc
 
 ## 参考文件
 
+- `references/toolchain.md` — 工具链路线：asc / fastlane / App Store Connect API Key 对比与命令模板
 - `references/metadata-checklist.md` — ASC 全字段清单与填写顺序
 - `references/browser-automation.md` — ASC 网页自动化纪律（React 表单、弹窗、路由）
 - `references/xcode-build-upload.md` — 归档/导出/上传命令与签名坑
