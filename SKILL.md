@@ -49,6 +49,9 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 ## 关键纪律
 
 - **每一步保存后重载复核**：ASC 表单偶发静默丢失，重载确认持久化再往下走。
+- **CLI 账号会话不可靠**：`No Accounts with App Store Connect Access` 与 Xcode GUI 登录状态无关（2026-09 实测登录正常仍报），别反复重登，直接切 `references/headless-signing.md` 的 API Key 管线。
+- **导出用净 PATH**：Homebrew rsync 会让 `exportArchive` 报裸 `Copy failed`（真实报错藏在 `.xcdistributionlogs` 分发包里），用 `env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin` 跑。
+- **ASC 表单要真实鼠标事件**：程序化 click/fill 常不进 React 状态；「焦点+真实键盘」能过一部分，顽固表单用同源 iris API 直写（Cookie 会话）。价格下拉要点 menuitem 里的内层 button。
 - **隐私答复必须「发布」**：提交校验报「具有管理职能的用户必须在 App 隐私部分提供相关信息」时，先去 App 隐私页看顶部有没有「发布」按钮——答案早填好了但没发布是最常见根因。
 - **截图槽位**：6.9" iPhone 槽是折叠手风琴，先展开；iPad 通过页面顶部设备下拉切换；只需填满 6.9" 和 13" 两槽，其余尺寸自动继承。
 - **年龄分级保存时机**：分步问卷最后一步别点页面级「保存」，用问卷自己的「下一步」走到结果页（系统算出的分级，如 4+）再保存。
@@ -70,6 +73,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - `references/metadata-checklist.md` — ASC 全字段清单与填写顺序
 - `references/browser-automation.md` — ASC 网页自动化纪律（React 表单、弹窗、路由）
 - `references/xcode-build-upload.md` — 归档/导出/上传命令与签名坑
+- `references/headless-signing.md` — 无头签名上传管线：API Key 建证书/描述文件 + 免口令临时钥匙串 + 手动签名导出 + altool 上传（2026-09 二次实战，CLI 账号会话无解时的主路线）
 - `references/website-privacy-page.md` — 官网三页 + Vercel 自定义域名
 - `references/pitfalls.md` — 完整踩坑清单
 - `scripts/exportOptions-appstore.plist` — App Store 导出配置模板

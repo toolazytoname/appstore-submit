@@ -41,3 +41,23 @@
 ## 界面文案注意
 
 20. 「此 App 版本已添加以供审核」≠ 已提交——只是建了草稿提交，还要点草稿区的「提交以供审核」，状态变「正在等待审核」才算数。
+
+## 无头构建上传类（2026-09 第二次实战）
+
+21. **`No Accounts with App Store Connect Access` 无解于 CLI**：Xcode GUI 账号登录正常、沙箱内外、前后台都试过仍报。结论：别修账号，直接换 API Key 无头管线（见 `references/headless-signing.md`）。
+22. **Homebrew rsync 弄挂导出**：`xcodebuild -exportArchive` 尾声报裸 `Copy failed`，分发包日志（`/var/folders/.../BunnyMetronome_*.xcdistributionlogs/IDEDistributionPipeline.log`）里是 `rsync: --extended-attributes: unknown option [server=3.4.1]`——Homebrew 的 rsync 3.4.1 抢了 PATH，系统 openrsync 才认 `-E`。**解法：`env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME=$HOME xcodebuild ...` 净 PATH 跑**。stdout 只有 5 行日志，细节必须翻分发包。
+23. **CLI 归档 Team 为空 → GUI Distribute 报 `No Team Found in Archive`**：`DEVELOPMENT_TEAM=` 当参数传不落盘。解法二选一：`plutil -replace Team -string <TEAMID>` + `plutil -replace ApplicationProperties.Team -string <TEAMID>` 直改归档 Info.plist；或归档时让签名落进归档。**个人账户有两个团队 ID（免费个人 + 付费会员），别用错**——付费那个才在分发证书上。
+24. **创建分发证书的 CSR 必须 RSA 2048**：EC P-256 会被 `CSR algorithm/size incorrect. Expected: RSA(2048)` 拒（`openssl genrsa -out key.pem 2048`）。
+25. **开发 profile 必须带 devices 关系**：`IOS_APP_DEVELOPMENT` 类型 POST 缺 `devices` 报 `The relationship 'devices' is required`；设备列表 `GET /v1/devices`。
+26. **curl 打 ASC API 带 `filter[xxx]` 会报 `bad range in URL`**：方括号被当 glob，加 `-g/--globoff`。
+27. **altool API Key 自动发现**：`.p8` 放 `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`，`xcrun altool --upload-app -f app.ipa -t ios --apiKey <KEYID> --apiIssuer <ISSUER>` 即可，无需 app-specific password。
+
+## ASC 表单与流程类（2026-09 第二次实战）
+
+28. **ASC React 表单只认真实鼠标事件**：程序化 `el.click()`/`fill()` 大概率不进状态（页面显示有值、保存时丢、按钮不激活）；先试「焦点 + 真实键盘」，顽固表单直接同源 iris API 直写（`fetch('/iris/v1/...')` 带 Cookie）。价格下拉要点 menuitem 里的**内层 button**，点外层 menuitem 无效。
+29. **首个 IAP 随版本送审（2026 新流程）**：IAP 页「Add for Review」创建提交单（IAP 进单）→ 版本页「Add for Review」把版本加进同一单 → 对话框「Submit for Review」。版本加不进时先查：协议是不是 Verifying、DSA 是否已申报。
+30. **IAP 卡 `MISSING_METADATA` 查 availability**：UI 的 Set Up Availability 会静默失败（点完 Done 什么都没存）。对 `GET /iris/v2/inAppPurchases/<id>/inAppPurchaseAvailability`，404 = 没建成。解法：`GET /v1/territories?limit=200` 拿全量 → `POST /v1/inAppPurchaseAvailabilities`（关系：inAppPurchase + availableTerritories 全量 + `availableInNewTerritories:true`）。
+31. **IAP 本地化创建的关系键是 `inAppPurchaseV2`**（不是 `inAppPurchase`），报 `ENTITY_ERROR.RELATIONSHIP.UNKNOWN` 时换键重试；偶发 500 重试一次就过。
+32. **签付费协议触发 KYC 链**：同意 Paid Apps Agreement 后要求「英文法定名称」证件（护照/身份证照片 + 出生国/城市 + 持股 100%），提交后**免费+付费协议都变 Verifying，版本 Add for Review 被闸**，等邮件（几小时～2 天）。DSA trader 申报类似：联系信息 + 邮箱验证码（可能验证两轮，中途退出不保存）。
+33. **无 filechooser 的浏览器传截图**：读取本地 PNG → base64 分块（~400KB/块）传进页面 → `atob` + `DataTransfer` + `new File` 赋给 `input.files` → 派发 change。上传后看槽位计数（如「4 of 10」）确认。
+34. **隐私答复问卷**：两个数据类型（Product Interaction + Device ID）都要走「用途=Analytics、不关联身份、不跟踪」三连；设置完必点顶部「发布」——草稿状态一切正常但提交校验必卡。
