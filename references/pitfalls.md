@@ -61,3 +61,16 @@
 32. **签付费协议触发 KYC 链**：同意 Paid Apps Agreement 后要求「英文法定名称」证件（护照/身份证照片 + 出生国/城市 + 持股 100%），提交后**免费+付费协议都变 Verifying，版本 Add for Review 被闸**，等邮件（几小时～2 天）。DSA trader 申报类似：联系信息 + 邮箱验证码（可能验证两轮，中途退出不保存）。
 33. **无 filechooser 的浏览器传截图**：读取本地 PNG → base64 分块（~400KB/块）传进页面 → `atob` + `DataTransfer` + `new File` 赋给 `input.files` → 派发 change。上传后看槽位计数（如「4 of 10」）确认。
 34. **隐私答复问卷**：两个数据类型（Product Interaction + Device ID）都要走「用途=Analytics、不关联身份、不跟踪」三连；设置完必点顶部「发布」——草稿状态一切正常但提交校验必卡。
+
+## 收款链路类（2026-09 第三次实战：银行/税表/810）
+
+35. **银行向导静默重置 &「已经添加过了」**：五行向导会话断了会悄悄退回第一步；保存是否成功不能看外层列表（默认折叠），展开「See More」或查 `/ppm/v1/.../banks` API。状态生命周期 Pending User Info → Verifying → Active。
+36. **「Add user info」不止一步**：加完银行还有「账户持有人 + 纳税人识别号」向导，之后还有 Compliance Screening（证件照 + 出生国/城市 + 上市否 + 持股%）。**缺任何一步银行都卡 Pending User Info，Paid Apps 协议翻不了 Active**。
+37. **税表问卷先裂成两张表**：预判题（非美居民 No + 无美国商业活动 No）保存后生成 Certificate of Foreign Status 和 W-8BEN 两张**独立表**，要分别打开各自 Submit。
+38. **W-8BEN 表单字段名有诈**：inline 输入 name 是 `articleReference` 和 `taxRate`（paragraph 无独立字段，别把段落号填进 taxRate）；FTIN 不填 Submit 也亮（标 Optional），但协定税率（中美 Article 12 / 10%）需要 FTIN（中国个人=身份证号）或出生日期，**不填可能按 30% 兜底扣**。
+39. **单选框 value 语义反转**：`useIncomeTypeOther` 组里「Income from the sale of applications」的 value 是 `"NO"`。一律按 label 文本定位，别信 value。
+40. **810 号令是三段式**：Compliance 表「Add Info」（无雇员/场所 + 纳税人识别号）→ 之后单独弹「Confirm Information」（Resident ID Card Number 再填一次）→ 状态 Verified/Active（生效日可能显示未来日期，如 Nov 30，属正常）。
+41. **Business 页状态闪烁**：后端最终一致性导致横幅/协议状态在 reload 间跳变（一次 Active 一次 Pending）。判据：**带按钮的行动横幅** = 真缺信息；无按钮 = 服务端处理中，别追转态。
+42. **状态探测用 ppm API 别猜 iris**：`/ppm/v1/accounts/{account}/banks|pendingBankAccounts|legalEntities|vendors/{id}/taxRequirements`（Cookie 会话直接 fetch）；iris 的组织/协议端点全是 404，真实 URL 从 `performance.getEntriesByType("resource")` 收割。
+43. **浏览器面板关闭 = Cookie 清空**：ASC 整个重登（2FA 只有用户能做）。提示用户勾「Keep me signed in」、流程中途别关面板。
+44. **证件照上传**（无 filechooser）：`node:fs` 读文件 → base64 ~400KB 分块 evaluate 推进 window 数组 → `join + atob` → `new File` + `DataTransfer` 赋 `input.files` → 派发 input/change；成功标志是 UI 出现文件名 + Delete 按钮（上限 7MB）。
