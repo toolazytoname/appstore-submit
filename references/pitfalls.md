@@ -74,3 +74,15 @@
 42. **状态探测用 ppm API 别猜 iris**：`/ppm/v1/accounts/{account}/banks|pendingBankAccounts|legalEntities|vendors/{id}/taxRequirements`（Cookie 会话直接 fetch）；iris 的组织/协议端点全是 404，真实 URL 从 `performance.getEntriesByType("resource")` 收割。
 43. **浏览器面板关闭 = Cookie 清空**：ASC 整个重登（2FA 只有用户能做）。提示用户勾「Keep me signed in」、流程中途别关面板。
 44. **证件照上传**（无 filechooser）：`node:fs` 读文件 → base64 ~400KB 分块 evaluate 推进 window 数组 → `join + atob` → `new File` + `DataTransfer` 赋 `input.files` → 派发 input/change；成功标志是 UI 出现文件名 + Delete 按钮（上限 7MB）。
+## 拒审回复与真机演示类（2026-09 二轮：2.1 Information Needed 回复实战）
+
+   - 症状：`-exportArchive` 走到 IDEDistributionCreateIPAStep 报 `Copy failed`，分发日志里 `/usr/bin/rsync exited with 1`、`rsync: on remote machine: --extended-attributes: unknown option [server=3.4.1]`。
+   - 根因：打包 IPA 用系统 openrsync（`-E` = `--extended-attributes` 是 macOS 专有 flag），但 rsync 本地服务端按 PATH 解析到了 homebrew 的 rsync 3.4.1。
+   - 解法：`env PATH="/usr/bin:/bin:/usr/sbin:/sbin" xcodebuild -exportArchive ...` 受控 PATH 重试（一次即成）。
+45. **Release 商店构建没有 UI 测试钩子**：若 `--ui-test-storage-id` 之类的测试启动参数包在 `#if DEBUG` 里，Release 配置跑 UI 测试**直接写生产存储、无隔离**。演示/回归用完即卸载重装；绝不在有真实用户数据的设备上跑 Release 配置测试。
+46. **中国区新容器首启「允许无线数据」弹窗**：全新安装的 App 首次键盘输入触发系统弹窗（SpringBoard Alert），拦截合成事件导致 typeText 静默丢失。测试里加 SpringBoard 弹窗处理器（启动后 + 首次输入前各查一次；模拟器无弹窗时 no-op）。
+47. **真机演示录屏的唯一可靠路线 = iPhone Mirroring 窗口 + `screencapture -v -l<id>`**。QuickTime/AVFoundation 的 iPhone「外部设备」源是 Continuity Camera 摄像头不是屏幕；XCTest 真机录屏只保留失败轮；devicectl 无截屏。详见 `references/rejection-reply.md`。
+48. **iPhone Mirroring LIVE 验证的假阴性**：对当前已在前台的 App 重复 devicectl launch = 画面无变化 = diff 0，会被误判成镜像死了。必须切一个「当前不在前台」的 App 再 diff。隔夜断连要手机锁屏一次才重连，连接期间别碰手机。
+49. **ASC 登录会话隔夜过期**：内嵌浏览器跳 `login?...authResult=FAILED`。让用户自己在浏览器面板重新登录（凭据永远用户自输），自动化只做后续操作。
+50. **2.1 回复后 Resubmit 保持禁用是正常的**：回复消息本身就是恢复审核的机制，不要去找「重新提交」按钮。
+51. **被拒版本换构建**：版本页 Build 表删除按钮 hover 才可见（Playwright 直接 click 会超时，用 `evaluate(el => el.click())`）→ Add Build 弹层单选新构建 → 提审详情条目自动显示新构建号。

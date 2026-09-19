@@ -50,3 +50,4 @@ USER=$(whoami) LOGNAME=$(whoami) xcodebuild -exportArchive \
 | 签名身份 ambiguous | 钥匙串里多个团队证书 | 明确 teamID；核对登录账户 |
 | 上传成功但 ASC 看不到 | 构建还在处理 / 传错团队 | 等处理；核对 ASC 团队切换 |
 | exportOptions 键不被识别 | Xcode 版本差异 | `xcodebuild -help` 查当前版本可用键 |
+| `exportArchive` 报 `Copy failed` | homebrew rsync 遮蔽系统 rsync（openrsync 的 `--extended-attributes` flag，rsync 3.4.1 不认） | `env PATH="/usr/bin:/bin:/usr/sbin:/sbin" xcodebuild -exportArchive ...`；分发日志（xcdistributionlogs）里 grep `rsync` 确认 |

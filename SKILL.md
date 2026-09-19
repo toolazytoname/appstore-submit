@@ -1,6 +1,6 @@
 ---
 name: appstore-submit
-description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」或需要复用 ASC 自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码等）。
+description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed 等 50+ 条）。
 ---
 
 # App Store 提交（appstore-submit）
@@ -46,6 +46,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 9. **提交**：版本页「添加以供审核」→ 创建草稿提交 → 「提交以供审核」→ 状态变「正在等待审核」。官方口径审核最多约 48 小时，结果邮件通知。
 10. **发布后动作**（可选）：TestFlight 内部群组 + 测试员 + 真机装启；手动发布模式下过审后需再点一次「发布」才真正上架。
 11. **收款链路**（卖 IAP / 付费 App 必做）：签 Paid Apps 协议后依次配 银行账户（CNAPS 五行向导）→ Add user info → 证件核验 → 税表两张（W-8BEN + Certificate）→ 810 号令，全部 Active 后协议才 Active、收入才能结算。完整顺序与税务口径见 `references/banking-tax-compliance.md`。
+12. **被拒回复**（Guideline 2.1 Information Needed 等）：先修问题传新构建（被拒版本可换构建）→ 真机演示录屏（iPhone Mirroring 窗口 + `screencapture -v -l`，见参考）→ 提审详情页 Reply to App Review（六项说明 + 附件）+ Notes 同步精简版 → 回复即自动恢复审核。完整流程见 `references/rejection-reply.md`。
 
 ## 关键纪律
 
@@ -61,6 +62,8 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - **多团队账户**：每次操作前核对 ASC 右上角团队名，公司团队和个人团队全流程勿混。
 - **TestFlight 服务端故障**：若建内部群组反复报「发生错误，请稍后重试」、构建详情页间歇报「似乎出现一些问题」，是 ASC 服务端故障（可换时间重试或请用户在其浏览器手动建组），不要当成自己的数据问题反复改参数。
 - **收款链路三件套缺一不可**：银行 Active + 税表两张 Active + 810 提交，Paid Apps 协议才 Active；Business 页状态会闪烁，只认「带按钮的行动横幅」。税表/合规的状态探测走 `/ppm/v1/` API（Cookie 会话），iris 端点猜路径全 404。
+- **Release 商店构建跑 UI 测试 = 写生产存储**：测试钩子若在 `#if DEBUG` 里，Release 无隔离；演示/回归后卸载重装，勿在含真实数据的设备上跑。
+- **演示视频发出前做本地隐私自查**（通知横幅扫描 + 壁纸饱和度检查），设备帧不出本机。
 - 完整坑位清单见 `references/pitfalls.md`。
 
 ## 验证标准
@@ -74,9 +77,10 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - `references/toolchain.md` — 工具链路线：asc / fastlane / App Store Connect API Key 对比与命令模板
 - `references/metadata-checklist.md` — ASC 全字段清单与填写顺序
 - `references/browser-automation.md` — ASC 网页自动化纪律（React 表单、弹窗、路由）
-- `references/xcode-build-upload.md` — 归档/导出/上传命令与签名坑
+- `references/xcode-build-upload.md` — 归档/导出/上传命令与签名坑（含 rsync 遮蔽排障）
 - `references/headless-signing.md` — 无头签名上传管线：API Key 建证书/描述文件 + 免口令临时钥匙串 + 手动签名导出 + altool 上传（2026-09 二次实战，CLI 账号会话无解时的主路线）
 - `references/banking-tax-compliance.md` — 收款链路：银行账户（CNAPS）+ 证件核验 + W-8BEN/税表 + 中国 810 号令；状态依赖图与 ppm API 探测（2026-09 三次实战）
+- `references/rejection-reply.md` — 2.1 拒审回复全流程：换构建、Notes、真机演示录屏（iPhone Mirroring 唯一可靠路线）、点击光圈叠加、隐私自查、附件上传（2026-09 四次实战）
 - `references/website-privacy-page.md` — 官网三页 + Vercel 自定义域名
 - `references/pitfalls.md` — 完整踩坑清单
 - `scripts/exportOptions-appstore.plist` — App Store 导出配置模板
