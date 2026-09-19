@@ -84,7 +84,7 @@
 47. **真机演示录屏的唯一可靠路线 = iPhone Mirroring 窗口 + `screencapture -v -l<id>`**。QuickTime/AVFoundation 的 iPhone「外部设备」源是 Continuity Camera 摄像头不是屏幕；XCTest 真机录屏只保留失败轮；devicectl 无截屏。详见 `references/rejection-reply.md`。
 48. **iPhone Mirroring LIVE 验证的假阴性**：对当前已在前台的 App 重复 devicectl launch = 画面无变化 = diff 0，会被误判成镜像死了。必须切一个「当前不在前台」的 App 再 diff。隔夜断连要手机锁屏一次才重连，连接期间别碰手机。
 49. **ASC 登录会话隔夜过期**：内嵌浏览器跳 `login?...authResult=FAILED`。让用户自己在浏览器面板重新登录（凭据永远用户自输），自动化只做后续操作。
-50. **2.1 回复后 Resubmit 保持禁用是正常的**：回复消息本身就是恢复审核的机制，不要去找「重新提交」按钮。
+50. **2.1 回复后是否要点 Resubmit 取决于换没换构建**：仅回复（未换构建）→ 回复即恢复，Resubmit 禁用属正常；换了构建 → 版本回到「准备提交」，必须版本页 Update Review → 提审单 Ready for Review → Resubmit to App Review → Waiting for Review，漏一步 App 就静静躺着没人审。
 51. **被拒版本换构建**：版本页 Build 表删除按钮 hover 才可见（Playwright 直接 click 会超时，用 `evaluate(el => el.click())`）→ Add Build 弹层单选新构建 → 提审详情条目自动显示新构建号。
 
 ## 录制环境与输入注入类（2026-09-18 三轮：无 UITest 目标工程，手动驱动镜像）
