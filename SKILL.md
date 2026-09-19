@@ -1,6 +1,6 @@
 ---
 name: appstore-submit
-description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 60+ 条）。
+description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用；也覆盖**国内安卓市场上架**——华为 AGC 实名/建应用/Publishing API、小米个人通道关闭检测、阿里云 APP 备案全流程（一自然人一省管局、证件冲突排查、备案接口对自动化卡死）、软著 2026-03 AI 承诺新规、market 双变体渠道包工程（编译期 UI 切换）、Bitwarden 托管签名钥匙（jks base64 可还原）、Vercel 官网 APK 分发与微信安装坎。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 60+ 条，含 CN 安卓 20+ 条）。
 ---
 
 # App Store 提交（appstore-submit）
@@ -48,6 +48,10 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 11. **收款链路**（卖 IAP / 付费 App 必做）：签 Paid Apps 协议后依次配 银行账户（CNAPS 五行向导）→ Add user info → 证件核验 → 税表两张（W-8BEN + Certificate）→ 810 号令，全部 Active 后协议才 Active、收入才能结算。完整顺序与税务口径见 `references/banking-tax-compliance.md`。
 12. **被拒回复**（Guideline 2.1 Information Needed 等）：先修问题传新构建（被拒版本可换构建）→ 真机演示录屏（iPhone Mirroring 窗口 + `screencapture -v -l`，见参考）→ 提审详情页 Reply to App Review（六项说明 + 附件）+ Notes 同步精简版 → 回复即自动恢复审核。完整流程见 `references/rejection-reply.md`。
 
+## 国内安卓市场（延伸能力）
+
+同一套「商店提交 + 浏览器自动化 + 合规材料」经验覆盖国内安卓市场：华为 AGC（个人实名、建应用拿 AppID、提审材料）、阿里云 APP 备案（商店硬前置，关键路径 2–4 周）、market 双变体渠道包、官网 APK 分发。触发词如「上架华为」「小米市场」「APP 备案」「国内安卓商店」。全部规则、坑与时间线见 `references/cn-android-markets.md`（2026-09 实战复盘）。
+
 ## 关键纪律
 
 - **每一步保存后重载复核**：ASC 表单偶发静默丢失，重载确认持久化再往下走。
@@ -85,6 +89,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - `references/banking-tax-compliance.md` — 收款链路：银行账户（CNAPS）+ 证件核验 + W-8BEN/税表 + 中国 810 号令；状态依赖图与 ppm API 探测（2026-09 三次实战）
 - `references/rejection-reply.md` — 2.1 拒审回复全流程：换构建、Notes、真机演示录屏（iPhone Mirroring 唯一可靠路线 + 无 UITest 工程的手动驱动/环境加固）、点击光圈叠加、隐私自查、附件上传（2026-09 四次实战）
 - `references/website-privacy-page.md` — 官网三页 + Vercel 自定义域名
+- `references/cn-android-markets.md` — 国内安卓市场上架全流程：主体资格（小米个人关闭检测）、阿里云 APP 备案（规则/流程/证件外省主体冲突三板斧）、软著 AI 承诺新规、market flavor 渠道包工程、签名钥匙 Bitwarden 托管、官网 APK 分发（微信/纯血鸿蒙/国产 ROM 安装坎）、华为 AGC 控制台自动化坑、时间线（2026-09 实战）
 - `references/pitfalls.md` — 完整踩坑清单
 - `scripts/exportOptions-appstore.plist` — App Store 导出配置模板
 - `scripts/vercel-add-domain.sh` — Vercel 项目级域名登记（绕过 alias 坑）
