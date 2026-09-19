@@ -35,6 +35,10 @@
 6. 后期（可选但强烈推荐）：**点击光圈叠加**——从 xcresult 活动日志提取每次 Tap 的绝对时间戳（`xcresulttool get test-results activities`），坐标用一个临时探针测试打印各屏 `app.debugDescription` 解析元素中心（**新测试文件必须先 xcodegen 重生成，否则 0 测试空过**），`ffmpeg overlay` 链逐点叠 PNG 圆点，时间对齐 = Tap epoch − 测试起始 epoch −（录像里启动转场时刻 − 裁剪起点）。
 7. 裁剪：主屏引导留 2~3 秒起，流程结束 +2 秒止（帧差法找转场和静息点）。
 
+### 无 UITest 目标时的手动驱动路线（2026-09-18 三轮实测）
+
+纯手写 pbxproj 工程（无 xcodegen / project.yml）加 UITest 目标要动 8 处 section，风险大于收益时，可以**手动驱动镜像窗口**录屏：CGEvent 注入点击/滚轮跑流程 + 全屏（或 -l 窗口）录制。但环境坑密集，先读 `references/pitfalls.md` 52-62：防息屏（caffeinate 且**验证断言**）、`-V` 自然超时收尾（**SIGINT 丢文件**）、`-l` 全黑时全屏录 + `crop=` 裁剪、CGEvent 注入绕过全屏通知中心窗口、滚轮 continuous+pixel、每步动态取**面积最大**镜像窗口换算坐标、用户鼠标勿动、锁屏后镜像透明化、Vision OCR 本地定位元素、CLI 无麦克风（无音轨实测可过审）、沙盒新 IAP ≤24h 传播期「商店连不上」。第三次实战（节拍器 2.1 回复）全流程一镜过并成功提交。
+
 ## 视频隐私自查（发出前必做，全本地）
 
 - **通知横幅扫描**：抽帧（fps=2），「顶栏变化但全屏不变」= 横幅候选；真横幅前后无全屏变化，**启动转场会造成误报**（用 6fps 放大复核前后帧是否被全屏 diff 包裹）。
@@ -52,10 +56,15 @@
 ## 命令速查
 
 ```sh
-# 窗口 ID
+# 窗口 ID（取面积最大的镜像窗口，进程里有小窗会污染解析）
 swiftc -O -o /tmp/find_win /tmp/find_win.swift && /tmp/find_win   # CGWindowListCopyWindowInfo 过滤 iPhone Mirroring
-# 录制（300 秒上限自动停）
+# 防息屏（先验证断言真的挂上）
+caffeinate -disu -t 300 & pmset -g assertions | grep caffeinate
+# 录制（定长自然超时收尾；kill -INT 会丢文件）
 screencapture -v -l<WINID> -V 300 /tmp/demo.mov
+# -l 录出全黑时的回退：全屏录 + 按窗口 bounds 裁剪（×2 视网膜）
+screencapture -v -V 300 /tmp/raw.mov
+ffmpeg -i /tmp/raw.mov -vf "crop=668:1470:708:66" -c:v libx264 -crf 23 /tmp/demo.mp4
 # 测试驱动（全新安装起）
 xcodebuild test -project X.xcodeproj -scheme X -configuration Release \
   -destination 'id=<UDID>' -allowProvisioningUpdates \

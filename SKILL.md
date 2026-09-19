@@ -1,6 +1,6 @@
 ---
 name: appstore-submit
-description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed 等 50+ 条）。
+description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 60+ 条）。
 ---
 
 # App Store 提交（appstore-submit）
@@ -64,6 +64,9 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - **收款链路三件套缺一不可**：银行 Active + 税表两张 Active + 810 提交，Paid Apps 协议才 Active；Business 页状态会闪烁，只认「带按钮的行动横幅」。税表/合规的状态探测走 `/ppm/v1/` API（Cookie 会话），iris 端点猜路径全 404。
 - **Release 商店构建跑 UI 测试 = 写生产存储**：测试钩子若在 `#if DEBUG` 里，Release 无隔离；演示/回归后卸载重装，勿在含真实数据的设备上跑。
 - **演示视频发出前做本地隐私自查**（通知横幅扫描 + 壁纸饱和度检查），设备帧不出本机。
+- **录屏环境三件套**（2026-09 三轮实测）：caffeinate 防息屏且**验证断言**（displaysleep 可能只有 20s、合成事件不重置 idle）；`screencapture -v` 用 `-V` 定长**自然超时**收尾（SIGINT 丢文件）；`-l<窗口>` 录出全黑就改**全屏录 + ffmpeg crop**。
+- **合成输入走 CGEvent 直注**：全屏 notificationcenterui 窗口会吃掉后台命中判定的点击；滚轮要 continuous+pixel 才滚得动 SwiftUI sheet；坐标每步动态取**面积最大**镜像窗口换算；注入期间用户鼠标勿动。
+- **演示视频无音轨可接受**（实测过审提交）；CLI 拿不到麦克风（TCC 静默拒绝恒 -91dB），要音轨走 BlackHole 回环或 iOS 原生录屏。沙盒新 IAP 传播 ≤24h，「商店暂时连不上」不是 bug。
 - 完整坑位清单见 `references/pitfalls.md`。
 
 ## 验证标准
@@ -80,7 +83,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - `references/xcode-build-upload.md` — 归档/导出/上传命令与签名坑（含 rsync 遮蔽排障）
 - `references/headless-signing.md` — 无头签名上传管线：API Key 建证书/描述文件 + 免口令临时钥匙串 + 手动签名导出 + altool 上传（2026-09 二次实战，CLI 账号会话无解时的主路线）
 - `references/banking-tax-compliance.md` — 收款链路：银行账户（CNAPS）+ 证件核验 + W-8BEN/税表 + 中国 810 号令；状态依赖图与 ppm API 探测（2026-09 三次实战）
-- `references/rejection-reply.md` — 2.1 拒审回复全流程：换构建、Notes、真机演示录屏（iPhone Mirroring 唯一可靠路线）、点击光圈叠加、隐私自查、附件上传（2026-09 四次实战）
+- `references/rejection-reply.md` — 2.1 拒审回复全流程：换构建、Notes、真机演示录屏（iPhone Mirroring 唯一可靠路线 + 无 UITest 工程的手动驱动/环境加固）、点击光圈叠加、隐私自查、附件上传（2026-09 四次实战）
 - `references/website-privacy-page.md` — 官网三页 + Vercel 自定义域名
 - `references/pitfalls.md` — 完整踩坑清单
 - `scripts/exportOptions-appstore.plist` — App Store 导出配置模板

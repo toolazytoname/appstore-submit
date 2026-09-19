@@ -86,3 +86,17 @@
 49. **ASC 登录会话隔夜过期**：内嵌浏览器跳 `login?...authResult=FAILED`。让用户自己在浏览器面板重新登录（凭据永远用户自输），自动化只做后续操作。
 50. **2.1 回复后 Resubmit 保持禁用是正常的**：回复消息本身就是恢复审核的机制，不要去找「重新提交」按钮。
 51. **被拒版本换构建**：版本页 Build 表删除按钮 hover 才可见（Playwright 直接 click 会超时，用 `evaluate(el => el.click())`）→ Add Build 弹层单选新构建 → 提审详情条目自动显示新构建号。
+
+## 录制环境与输入注入类（2026-09-18 三轮：无 UITest 目标工程，手动驱动镜像）
+
+52. **displaysleep 极短会把录像录成全黑**（实测一台机器 20s）：合成鼠标/键盘事件不重置系统 idle 计时，屏幕照样息屏，`screencapture -v` 录出黑帧而 still 截图正常（两者走同一 framebuffer，极易误判）。录制前 `caffeinate -disu -t <秒> &`，且必须 `pmset -g assertions | grep caffeinate` **验证断言真挂上**再开录。
+53. **`screencapture -v` 只能自然超时收尾**：`kill -INT` 实测直接丢文件（无任何输出，文件根本不落盘）。用 `-V <秒>` 定长录制（比流程预估长 20% 即可），多余尾帧后期裁剪。
+54. **`-l<窗口id>` 录像可能整段黑/灰**：Mac 锁屏后窗口合成表面挂起、或镜像窗口被全屏 Chrome 压在另一个 Space 后面——still 截图正常但 `-v` 录像全黑。回退方案：**全屏录制 + ffmpeg 按窗口 bounds 裁剪**（`-vf "crop=W:H:X:Y"`，坐标 = CGWindowList bounds × 2 视网膜）。
+55. **后台合成点击被全屏 notificationcenterui 窗口吞掉**：报错「pixel is owned by com.apple.notificationcenterui (window N, bounds=整屏)」= a11y/后台命中判定已废，点击全被这个隐形全屏窗口吃掉。解法：自建 swift CGEvent 注入工具（click/drag/scroll 三件套，`CGEvent.post(tap: .cghidEventTap)`），HID 级事件不受窗口归属判定影响。
+56. **镜像窗口里滚 SwiftUI sheet 要「continuous + pixel」滚轮**：`CGEvent(scrollWheelEvent2Source:units:.pixel,...)` 且 `setIntegerValueField(.scrollWheelEventIsContinuous, 1)`；`.line` 单位和离散滚轮都滚不动。鼠标拖拽滚动会被按钮/滑块控件吃掉，不如滚轮稳。
+57. **镜像窗口会漂移、同进程还有小窗污染窗口解析**：坐标换算必须每步动态读 CGWindowList（取**面积最大**的 iPhone Mirroring 窗口——进程里有 ~70×30pt 的附属小窗会污染「取第一个」的解析），pt→global 每次现算；脚本开头预计算坐标必翻车。
+58. **用户的物理鼠标 = 注入指针**：注入阶段用户一动，点击位移、拖拽断链、窗口被拖走连环发生（前两次 take 全废于此）。开始注入前明确告知用户「接下来 N 秒手离开鼠标和手机」。
+59. **Mac 锁屏后镜像窗口可能渲染成透明**：透出桌面/Chrome（OCR 空输出、画面偏灰蓝）；View 菜单可用 ≠ 窗口表面活着。恢复 = 重启 iPhone Mirroring App + View ▸ Home Screen 强制重绘；或直接走全屏录制路线绕开。
+60. **元素定位用本地 Vision OCR**：`VNDetectTextRequest`（`recognitionLanguages=["zh-Hans","en-US"]`，取 observation.boundingBox 换算窗口 pt 坐标），中英文 UI 文字一次成型，比像素色块猜测稳一个量级。注意：agent 的图片 Read/「查看」多走外部 CDN——设备帧只做本地像素统计（PIL），别喂给多模态。
+61. **CLI 进程拿不到麦克风**：TCC 静默拒绝表现为恒 -91dB 假数据（不报错、volumedetect 数字漂亮）。演示视频要音轨需 BlackHole 虚拟声卡（切换系统输出录回环）或 iOS 端原生录屏 + AirDrop 回传；**无音轨的演示视频 App Review 实测接受**（2.1 回复附件已提交成功）。
+62. **沙盒新 IAP 传播 ≤24h**：IAP 刚建几小时，开发包里解锁按钮显示「商店暂时连不上」≠ bug（实测建后 9h 仍未传播）。演示视频拍不到系统购买弹窗时，在回复文案里写明原因和购买路径，传播后重验；别为此反复重装折腾。
