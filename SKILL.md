@@ -1,6 +1,6 @@
 ---
 name: appstore-submit
-description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI；定价/供应范围/年龄分级/截图均可裸 API 直写，提审建单必须网页），网页独有操作（隐私问卷发布、类别/内容版权等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用；也覆盖**国内安卓市场上架**——华为 AGC 实名/建应用/Publishing API、小米个人通道关闭检测、阿里云 APP 备案全流程（一自然人一省管局、证件冲突排查、备案接口对自动化卡死）、软著 2026-03 AI 承诺新规、market 双变体渠道包工程（编译期 UI 切换）、Bitwarden 托管签名钥匙（jks base64 可还原）、Vercel 官网 APK 分发与微信安装坎。覆盖真实踩坑（隐私答复草稿≠发布、提审硬前置：内容版权+价格、类别下拉保存锁定、appPriceSchedules 内联 id 字面 ${new-price} 格式、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 70+ 条，含 CN 安卓 20+ 条）。
+description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI；定价/供应范围/年龄分级/截图均可裸 API 直写，提审建单必须网页），网页独有操作（隐私问卷发布、类别/内容版权等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用；也覆盖**国内安卓市场上架**——华为 AGC 实名/建应用/Publishing API、小米个人通道关闭检测、阿里云 APP 备案全流程（一自然人一省管局、证件冲突排查、备案接口对自动化卡死）、软著 2026-03 AI 承诺新规、market 双变体渠道包工程（编译期 UI 切换）、Bitwarden 托管签名钥匙（jks base64 可还原）、Vercel 官网 APK 分发与微信安装坎。覆盖真实踩坑（隐私答复草稿≠发布、提审硬前置：内容版权+价格、类别下拉保存锁定、appPriceSchedules 内联 id 字面 ${new-price} 格式、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 80+ 条，含 CN 安卓 20+ 条）。
 ---
 
 # App Store 提交（appstore-submit）
@@ -72,7 +72,9 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - **演示视频发出前做本地隐私自查**（通知横幅扫描 + 壁纸饱和度检查），设备帧不出本机。
 - **录屏环境三件套**（2026-09 三轮实测）：caffeinate 防息屏且**验证断言**（displaysleep 可能只有 20s、合成事件不重置 idle）；`screencapture -v` 用 `-V` 定长**自然超时**收尾（SIGINT 丢文件）；`-l<窗口>` 录出全黑就改**全屏录 + ffmpeg crop**。
 - **合成输入走 CGEvent 直注**：全屏 notificationcenterui 窗口会吃掉后台命中判定的点击；滚轮要 continuous+pixel 才滚得动 SwiftUI sheet；坐标每步动态取**面积最大**镜像窗口换算；注入期间用户鼠标勿动。
-- **演示视频无音轨可接受**（实测过审提交）；CLI 拿不到麦克风（TCC 静默拒绝恒 -91dB），要音轨走 BlackHole 回环或 iOS 原生录屏。沙盒新 IAP 传播 ≤24h，「商店暂时连不上」不是 bug。
+- **演示视频无音轨可接受**（实测过审提交）；CLI 拿不到麦克风（TCC 静默拒绝恒 -91dB），要音轨走 BlackHole 回环或 iOS 原生录屏。沙盒拉不到商品先查 Paid Apps 协议状态（未生效时 Product.products 返回空，症状与传播延迟相同），修完银行自然出价。
+- **财务组件按钮静默失灵先查网络**（2026-09 四轮）：monkey-patch `window.fetch` 记录再点——ATB 业务组件约 2.5h 后 `/ppm/v1/2fa/*` 静默 401，UI 不报错只装死；残影银行（API 空返回+UI 行无状态+Add 按钮无响应）= 向导差最后 Certification，点银行行补完，2FA 码用户输。DSA 重报要传地址证明（对账单），联系表单要改值才放行 Next。详见 `references/banking-tax-compliance.md` 末节。
+- **表单输入的 IME 雷**：真键盘打字母会被中文输入法混入候选词（实测污染地址栏）；字母文本走原生 setter，真键盘只用于数字；全屏 Spinner backdrop 期间一切点击无效，先等它消失。
 - 完整坑位清单见 `references/pitfalls.md`。
 
 ## 验证标准

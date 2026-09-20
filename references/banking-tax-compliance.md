@@ -51,3 +51,11 @@ iris 的组织/协议端点（`/iris/v1/organizations` 等）**不存在**（404
 - **W-8BEN 的 inline 输入** name 是 `articleReference` 和 `taxRate`（没有单独的 paragraph 字段）；别把段落号填进 taxRate。
 - **证件照上传**（无 filechooser 的浏览器）：`node:fs` 读文件 → base64 按 ~400KB 分块多次 evaluate 推进 `window` 数组 → `join + atob` → `new File` + `DataTransfer` 赋 `input.files` → 派发 input/change。上传成功的标志是 UI 出现文件名 + Delete 按钮。
 - **会话脆弱**：浏览器面板关闭/重启会清 Cookie → ASC 整个重登（2FA 只有用户能做）。提示用户登录页勾「Keep me signed in」，流程中途别关面板。
+
+## 残影银行补完（2026-09-19 四轮实测）
+
+**症状三联**：banks API 空返回 + UI 有银行行但状态空白 `Not in Use` + Add Bank Account 按钮点了没反应。**真相**：当初向导只差 Certification 没提交，持有人/CNAPS/账号全在库里。
+
+修法：点银行行（不是 Add 按钮）→ Edit Account Holder Details（预填，直接 Next）→ Edit Bank Account（CNAPS/账号掩码都在，直接 Next）→ Certification 勾选（真实点击）→ Add。首次 Add 会 401 并自动弹 `Two-Factor Authentication Required` 六位码框（`POST /olympus/v1/mfaChallenges`），用户输码后 PUT 重放 200 → 银行与 Paid Apps 双双 **Processing** → Active。
+
+**排障铁律**：财务组件按钮静默失灵时，先 monkey-patch `window.fetch` 记录请求再点——401 = 会话 2FA 过期（ATB 组件约 2.5h），不是表单问题；别在表单上浪费时间。详见 `pitfalls.md` 72-80。
