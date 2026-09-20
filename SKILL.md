@@ -1,6 +1,6 @@
 ---
 name: appstore-submit
-description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI），网页独有操作（隐私问卷发布、年龄分级等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用；也覆盖**国内安卓市场上架**——华为 AGC 实名/建应用/Publishing API、小米个人通道关闭检测、阿里云 APP 备案全流程（一自然人一省管局、证件冲突排查、备案接口对自动化卡死）、软著 2026-03 AI 承诺新规、market 双变体渠道包工程（编译期 UI 切换）、Bitwarden 托管签名钥匙（jks base64 可还原）、Vercel 官网 APK 分发与微信安装坎。覆盖真实踩坑（隐私答复草稿≠发布、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 60+ 条，含 CN 安卓 20+ 条）。
+description: 端到端把 iOS App 提交到 App Store 审核的实战流程：两条路线——优先 fastlane（有 Android 产品线时双端统一主线；Android 侧 supply 走 Google Play）或 asc（iOS-only 轻量主线）+ App Store Connect API Key 脚本化（省 token、可进 CI；定价/供应范围/年龄分级/截图均可裸 API 直写，提审建单必须网页），网页独有操作（隐私问卷发布、类别/内容版权等）用浏览器自动化补齐；xcodebuild 归档上传、元数据/截图/隐私/定价/分级、提交审核与 TestFlight；收款链路（银行账户、W-8BEN 税表、中国 810 号令合规）；Guideline 2.1 拒审回复全流程（换构建、Notes、真机演示录屏的 iPhone Mirroring 唯一可靠路线、无 UITest 工程的 CGEvent 手动驱动与环境加固、点击光圈叠加、隐私自查、附件上传）。当用户要「上架苹果商店」「提交 App Store 审核」「TestFlight 发布」「配置收款/税表」「被拒后回复 App Review」或需要复用 ASC 自动化经验时使用；也覆盖**国内安卓市场上架**——华为 AGC 实名/建应用/Publishing API、小米个人通道关闭检测、阿里云 APP 备案全流程（一自然人一省管局、证件冲突排查、备案接口对自动化卡死）、软著 2026-03 AI 承诺新规、market 双变体渠道包工程（编译期 UI 切换）、Bitwarden 托管签名钥匙（jks base64 可还原）、Vercel 官网 APK 分发与微信安装坎。覆盖真实踩坑（隐私答复草稿≠发布、提审硬前置：内容版权+价格、类别下拉保存锁定、appPriceSchedules 内联 id 字面 ${new-price} 格式、-allowProvisioningUpdates、电话国家码、homebrew rsync 遮蔽导致 Copy failed、displaysleep 20s 录黑屏、SIGINT 丢录像 等 70+ 条，含 CN 安卓 20+ 条）。
 ---
 
 # App Store 提交（appstore-submit）
@@ -39,11 +39,11 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 2. **官网三页**：首页 / 隐私政策 / 支持页，挂自定义域名。见 `references/website-privacy-page.md`（含 Vercel 自定义域名的大坑）。
 3. **构建上传**：`xcodebuild archive` + `-exportArchive`。见 `references/xcode-build-upload.md`。**新 bundle id 首次导出必须带 `-allowProvisioningUpdates`**。
 4. **ASC 元数据**：版本页（描述/关键词/技术支持 URL/营销 URL/版权/发布方式/审核备注/联系信息）、截图（iPhone 6.9" 槽 + iPad 13" 槽，6.5" 自动继承 6.9"）。完整清单见 `references/metadata-checklist.md`。
-5. **App 信息**：副标题、主要/次要类别、年龄分级（分步问卷）。
+5. **App 信息**：副标题、主要/次要类别、年龄分级（分步问卷，或 `PATCH /v1/ageRatingDeclarations` API 直写）、**内容版权声明**。
 6. **App 隐私**：政策 URL + 数据收集问卷。**填完必须点页面顶部的「发布」——「保存」只是草稿，不发布 = 提交时必报错**（见下）。
-7. **定价与供应**：价格等级（免费选 $0.00 价格表）、分发方式「公开」、供应国家或地区。
+7. **定价与供应**：价格等级（免费选 $0.00 价格表；API 可一条龙：`POST /v1/appPriceSchedules` + `POST /v2/appAvailabilities`）、分发方式「公开」、供应国家或地区。**缺价格等级会被提审校验拦截**。
 8. **审核信息**：联系信息（**电话必须带 `+` 国家码**，如 `+8615901020559`）、审核备注；App 无账号体系则取消「需要登录」勾选。
-9. **提交**：版本页「添加以供审核」→ 创建草稿提交 → 「提交以供审核」→ 状态变「正在等待审核」。官方口径审核最多约 48 小时，结果邮件通知。
+9. **提交**：版本页「添加以供审核」→ 创建草稿提交 → 「提交以供审核」→ 状态变「正在等待审核」。官方口径审核最多约 48 小时，结果邮件通知。**此两步必须网页**：`appStoreVersionSubmissions` 对 API Key 只有 DELETE 权限（Admin 也不行）。提审校验的已知硬前置：隐私已「发布」、内容版权已声明、价格等级已选——缺哪个校验信息会点名哪个。
 10. **发布后动作**（可选）：TestFlight 内部群组 + 测试员 + 真机装启；手动发布模式下过审后需再点一次「发布」才真正上架。
 11. **收款链路**（卖 IAP / 付费 App 必做）：签 Paid Apps 协议后依次配 银行账户（CNAPS 五行向导）→ Add user info → 证件核验 → 税表两张（W-8BEN + Certificate）→ 810 号令，全部 Active 后协议才 Active、收入才能结算。完整顺序与税务口径见 `references/banking-tax-compliance.md`。
 12. **被拒回复**（Guideline 2.1 Information Needed 等）：先修问题传新构建（被拒版本可换构建）→ 真机演示录屏（iPhone Mirroring 窗口 + `screencapture -v -l`，见参考）→ 提审详情页 Reply to App Review（六项说明 + 附件）+ Notes 同步精简版 → 回复即自动恢复审核。完整流程见 `references/rejection-reply.md`。
@@ -57,7 +57,9 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - **每一步保存后重载复核**：ASC 表单偶发静默丢失，重载确认持久化再往下走。
 - **CLI 账号会话不可靠**：`No Accounts with App Store Connect Access` 与 Xcode GUI 登录状态无关（2026-09 实测登录正常仍报），别反复重登，直接切 `references/headless-signing.md` 的 API Key 管线。
 - **导出用净 PATH**：Homebrew rsync 会让 `exportArchive` 报裸 `Copy failed`（真实报错藏在 `.xcdistributionlogs` 分发包里），用 `env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin` 跑。
-- **ASC 表单要真实鼠标事件**：程序化 click/fill 常不进 React 状态；「焦点+真实键盘」能过一部分，顽固表单用同源 iris API 直写（Cookie 会话）。价格下拉要点 menuitem 里的内层 button。
+- **ASC 表单要真实鼠标事件**：程序化 click/fill 常不进 React 状态；「焦点+真实键盘」能过一部分，顽固表单用同源 iris API 直写（Cookie 会话）。价格下拉要点 menuitem 里的内层 button——或干脆走 API 建价格计划绕开。a11y 场景 AX `type` 后保存按钮仍灰时，对该字段 `select_text` 全选一次即触发 onChange。
+- **类别下拉保存锁定**：主要类别改动未保存时，次要类别下拉对一切输入无响应；先「保存」（按钮变「已保存」）再开次要下拉。
+- **提审校验三硬前置**：隐私已「发布」+ 内容版权已声明（弹层「完成」后还要页面级「保存」）+ 价格等级已选；缺哪个「添加以供审核」就点名哪个。
 - **隐私答复必须「发布」**：提交校验报「具有管理职能的用户必须在 App 隐私部分提供相关信息」时，先去 App 隐私页看顶部有没有「发布」按钮——答案早填好了但没发布是最常见根因。
 - **截图槽位**：6.9" iPhone 槽是折叠手风琴，先展开；iPad 通过页面顶部设备下拉切换；只需填满 6.9" 和 13" 两槽，其余尺寸自动继承。
 - **年龄分级保存时机**：分步问卷最后一步别点页面级「保存」，用问卷自己的「下一步」走到结果页（系统算出的分级，如 4+）再保存。

@@ -100,3 +100,27 @@
 60. **元素定位用本地 Vision OCR**：`VNDetectTextRequest`（`recognitionLanguages=["zh-Hans","en-US"]`，取 observation.boundingBox 换算窗口 pt 坐标），中英文 UI 文字一次成型，比像素色块猜测稳一个量级。注意：agent 的图片 Read/「查看」多走外部 CDN——设备帧只做本地像素统计（PIL），别喂给多模态。
 61. **CLI 进程拿不到麦克风**：TCC 静默拒绝表现为恒 -91dB 假数据（不报错、volumedetect 数字漂亮）。演示视频要音轨需 BlackHole 虚拟声卡（切换系统输出录回环）或 iOS 端原生录屏 + AirDrop 回传；**无音轨的演示视频 App Review 实测接受**（2.1 回复附件已提交成功）。
 62. **沙盒新 IAP 传播 ≤24h**：IAP 刚建几小时，开发包里解锁按钮显示「商店暂时连不上」≠ bug（实测建后 9h 仍未传播）。演示视频拍不到系统购买弹窗时，在回复文案里写明原因和购买路径，传播后重验；别为此反复重装折腾。
+
+## ASC 元数据 API 直写类（2026-09-19 第三次实战：胖龙漫画 1.0 全链路提审）
+
+63. **提审硬前置：内容版权声明 + 价格等级**：点「添加以供审核」报「无法添加以供审核」并列出缺项——已知会拦的两项：①「你必须在 App 信息中设置内容版权信息」（App 信息 → 内容版权 → 编辑 → 单选「不，不包含第三方内容」→ 完成 → **还要点页面级「保存」**，只点弹层「完成」不落库）；②「你必须在定价中选择价格等级」（见 65，API 一发即成）。校验信息是逐项列出的，缺什么补什么再重点一次。
+64. **类别下拉的保存锁定**：主要类别改动**未保存**时，次要类别下拉对任何输入（AXPress、真实鼠标点击、键盘 ↓）都无响应——表现像"控件坏了"，其实是表单锁定。先点「保存」（按钮变「已保存」），次要下拉立刻正常打开。别在这上面换各种点击方式浪费时间。
+65. **定价与供应范围可以纯 API 建成，绕开网页价格下拉**（价格下拉要点 menuitem 内层 button 的坑直接不存在了）：
+   - 免费价格点：`GET /v1/apps/{id}/appPricePoints?filter[territory]=USA`，tier 0 是 customerPrice 0.0 那条（id 是 base64 串）。
+   - `POST /v1/appPriceSchedules`，relationships：app + baseTerritory(USA，territory id 就是三字码) + manualPrices；included 里内联 appPrices 的 id **必须是字面 `${new-price}` 格式**（先试 `new-price`、`$new-price` 都报 `INVALID_ID`，报错 detail 会直接教格式）。
+   - `POST /v2/appAvailabilities`（v1 路径 404）：`availableInNewTerritories: true` + `territoryAvailabilities` 内联（local id `${terr-0}`…，每条只带 territory 关系，**不要**写反向 appAvailability 关系会报 UNKNOWN）。175 个 territory 一页拉完（`/v1/territories?limit=200`，limit 上限 200）。
+66. **截图上传纯 API 三步**（比浏览器 DataTransfer 路（#33）稳，不经网页）：① `POST /v1/appScreenshots`（relationships.appScreenshotSet 指向目标 set）→ 响应带 `attributes.uploadOperations` 的预留 PUT URL；② `curl -X PUT --upload-file` 直传该 URL；③ `PATCH /v1/appScreenshots/{id}` `{"uploaded":true,"sourceFileChecksum":"<md5>"}`。set 用 `POST /v1/appScreenshotSets`（ Relationships: appStoreVersionLocalization + `screenshotDisplayType`）；**displayType 合法枚举里没有"6.9 寸/13 寸"字样**，6.9" = `APP_IPHONE_67`、iPad 13" = `APP_IPAD_PRO_3GEN_129`（1320×2868 / 2064×2752 实测都被接受）。JWT 短寿命：批量上传跑十几分钟会齐刷 401，每批重新签发 token。
+67. **年龄分级也能 API 直写**（绕开分步问卷的保存时机坑 #11）：`PATCH /v1/ageRatingDeclarations/{id}`，字段类型是**混合的**——`alcoholConsumption/contests/gamblingSimulated/medicalOrTreatmentInformation` 等是枚举（值 `"NONE"`），`gambling/healthOrWellnessTopics/messagingAndChat/socialMedia/unrestrictedWebAccess/userGeneratedContent/lootBox` 等是布尔，`ageAssurance` + `advertising` 是**必填**布尔（缺了 400 报字段名）。全 NONE/false → 4+。
+68. **提审动作本身 API 做不了**：`appStoreVersionSubmissions` 资源对 API Key（即使 Admin 职能）只有 DELETE 权限，POST 建提交单被拒。最后两步必须网页：版本页「添加以供审核」→ 草稿提交面板「提交以供审核」。成功标志「已提交 1 个项目」；API 侧 `GET /v1/appStoreVersions/{id}` 看 `appStoreState` 变 `WAITING_FOR_REVIEW` 双确认。
+69. **a11y type 填了值但保存按钮仍灰 = onChange 没触发**：AX 树里字段值已正确显示，但 React 没收到 change 事件。解法（无需重新输入）：对该字段做一次 `select_text` **全选**即触发状态更新，保存按钮立刻激活。比清空重打一遍快得多。
+70. **computer-use 坐标点击被遮挡层吃掉的排障顺序**：① 报错 `pixel is owned by <app>` 就是命中了别的窗口——先看是不是 IDE/编辑器全屏窗口盖着目标浏览器（AX 后台事件如 AXPress 能照常送达，**只有坐标点击会被遮挡层截胡**，这是判断依据）；② 通知中心侧栏开着时有一个 bounds=整屏的透明层（见 #55），点一下非侧栏区域让它收起；③ 仍不行就 JXA 直注 CGEvent 绕过一切命中判定：
+   ```bash
+   osascript -l JavaScript -e '
+   ObjC.import("CoreGraphics"); ObjC.import("unistd")
+   var pt = $.CGPointMake(x, y)   // 全局 points，从 AX bounds 中心取
+   var d = $.CGEventCreateMouseEvent(null, $.kCGEventLeftMouseDown, pt, $.kCGMouseButtonLeft)
+   var u = $.CGEventCreateMouseEvent(null, $.kCGEventLeftMouseUp, pt, $.kCGMouseButtonLeft)
+   $.CGEventPost($.kCGHIDEventTap, d); $.usleep(80000); $.CGEventPost($.kCGHIDEventTap, u)'
+   ```
+   ④ 目标窗口 bounds 会漂移：每轮点击前重新 get_app_state 取最新 AX bounds 换算，或先用 AppleScript 把窗口 `set position` 钉死再点。
+71. **AX 全局坐标 → 屏幕 raster 像素换算**：AX bounds 是全局 points；目标显示器 raster 像素 = (AX 点 − 显示器 origin) ÷ (显示器点数 ÷ raster 像素数)。例：副屏 bounds [-1920,-669,1920,1080]、raster 1280×720 → 除数 1.5；主屏 [0,0,1512,982]、raster 1280×831 → 除数 ≈1.18。换算错 50px 就点到隔壁控件，视觉模型给的坐标也要用它交叉校验。

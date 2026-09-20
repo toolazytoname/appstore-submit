@@ -76,12 +76,14 @@ end
 | 操作 | API 工具 | 浏览器自动化 |
 | --- | --- | --- |
 | 归档上传 | ✅ xcodebuild/asc | 不需要 |
-| 元数据/截图/关键词 | ✅ deliver / asc | 兜底 |
+| 元数据/截图/关键词 | ✅ deliver / asc / 裸 ASC API（截图三步直传见 pitfalls #66） | 兜底 |
 | TestFlight 群组与测试员 | ✅ pilot / asc | 兜底 |
-| 提交审核 / 发布 | ✅ asc submit / deliver | 兜底 |
-| 定价与供应情况 | ✅（API 已覆盖） | 兜底 |
+| 年龄分级 | ✅ `PATCH /v1/ageRatingDeclarations`（2026-09 实测，字段类型坑见 pitfalls #67） | 兜底 |
+| 定价与供应情况 | ✅ `POST /v1/appPriceSchedules` + `POST /v2/appAvailabilities`（2026-09 实测一条龙，见 pitfalls #65） | 兜底 |
+| **提交审核（建提交单）** | ❌ `appStoreVersionSubmissions` 对 API Key 只有 DELETE 权限，POST 被拒（2026-09 实测，Admin 职能也不行） | ✅ 唯一路线：版本页「添加以供审核」→「提交以供审核」 |
+| 版本发布（过审后手动模式） | ✅ PATCH appStoreVersion 的 releaseRequest / asc | 兜底 |
 | **App 隐私问卷「发布」** | ⚠️ 历史上网页独有，用前查证 | ✅ 主路线 |
-| **年龄分级分步问卷** | ⚠️ 同上 | ✅ 主路线 |
+| **类别 / 内容版权声明** | ❌ primaryCategory 关系 API 只读（FORBIDDEN） | ✅ 唯一路线（内容版权是提审硬前置，见 pitfalls #63） |
 | App 记录创建 / bundle id 换绑 | ⚠️ 一次性操作 | ✅ 主路线 |
 
 ⚠️ 标记的边界随 ASC API 版本演进，用前查 Apple 官方文档确认；网页独有操作的纪律见 `references/browser-automation.md`。
