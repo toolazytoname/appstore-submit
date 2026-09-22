@@ -39,9 +39,13 @@
 6. 后期（可选但强烈推荐）：**点击光圈叠加**——从 xcresult 活动日志提取每次 Tap 的绝对时间戳（`xcresulttool get test-results activities`），坐标用一个临时探针测试打印各屏 `app.debugDescription` 解析元素中心（**新测试文件必须先 xcodegen 重生成，否则 0 测试空过**），`ffmpeg overlay` 链逐点叠 PNG 圆点，时间对齐 = Tap epoch − 测试起始 epoch −（录像里启动转场时刻 − 裁剪起点）。
 7. 裁剪：主屏引导留 2~3 秒起，流程结束 +2 秒止（帧差法找转场和静息点）。
 
-### 无 UITest 目标时的手动驱动路线（2026-09-18 三轮实测）
+### 无 UITest 目标时的手动驱动路线（2026-09-19 胖龙二次实战修订）
 
-纯手写 pbxproj 工程（无 xcodegen / project.yml）加 UITest 目标要动 8 处 section，风险大于收益时，可以**手动驱动镜像窗口**录屏：CGEvent 注入点击/滚轮跑流程 + 全屏（或 -l 窗口）录制。但环境坑密集，先读 `references/pitfalls.md` 52-62：防息屏（caffeinate 且**验证断言**）、`-V` 自然超时收尾（**SIGINT 丢文件**）、`-l` 全黑时全屏录 + `crop=` 裁剪、CGEvent 注入绕过全屏通知中心窗口、滚轮 continuous+pixel、每步动态取**面积最大**镜像窗口换算坐标、用户鼠标勿动、锁屏后镜像透明化、Vision OCR 本地定位元素、CLI 无麦克风（无音轨实测可过审）、沙盒新 IAP ≤24h 传播期「商店连不上」。第三次实战（节拍器 2.1 回复）全流程一镜过并成功提交。
+纯手写 pbxproj 工程（无 xcodegen / project.yml）加 UITest 目标要动 8 处 section，风险大于收益时，可以**手动驱动镜像窗口**录屏。**驱动工具选型（重要）**：JXA CGEvent 直点时灵时不灵；**用 CUA/automation 的窗口路由点击与 drag（app_ref=镜像窗口 + raster 坐标）**，occluder 拦不住、稳定可用。iOS 系统边缘手势（返回滑、上滑回主屏）打不进镜像——**流程设计成翻到最后一页自然收尾，不要 exit 手势**。列表条目热点可能只有左侧文本列，先干跑一遍记录实测坐标再正式录。
+
+干跑流程（全部菜单/坐标验证完再录）：View ▸ Home Screen 定主屏 → CUA drag 翻桌页/资源库找图标（卸载重装后图标进 App Library「最近添加」，点文件夹图标不是 label）→ 点图标冷启动 → 书架 → 点条目文本 → 开始阅读 → 右缘点翻页。录制中每步 CUA 调用间隔 5-10s（工具往返延迟），录出的原始片每屏会停 5-10s——**别追求一镜节奏，后期按帧剪**：fps=1 抽帧 OCR 定每屏时间戳 → 转 CFR 母版（`-vf "fps=30,setpts=N/(30*TB)"`）→ 母版上 `-ss/-to`（放 `-i` 后）切 2-3s/屏的小段 → concat。静止帧上跳剪无缝。用户嫌节奏慢时重切就行，不用重录。
+
+环境坑清单（详见 pitfalls 52-62 + 81-92）：防息屏（nohup caffeinate 且验证断言，displaysleep 可能只有 20s）、`-V` 自然超时收尾（**SIGINT 丢文件**）、`-l` 全黑时全屏录 + `crop=` 裁剪（注意这台机器 `-R` 区域截屏直接报错，全屏截+PIL crop）、每步动态取窗口 raster、用户桌面有活跃窗口时本地截屏会被污染（坐标以 CUA 窗口 raster 为准）、手机锁屏→Connection Paused→点窗口中央 Resume、CLI 无麦克风（无音轨实测可过审）。
 
 ## 视频隐私自查（发出前必做，全本地）
 
