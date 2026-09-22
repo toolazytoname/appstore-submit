@@ -136,3 +136,24 @@
 78. **残影银行=没走完的向导**：banks API 空返回 + UI 有行但状态空白 Not in Use + Add Bank Account 按钮点了没反应——数据其实都在（持有人/CNAPS/账号掩码全存着），只差最后 Certification。修法：**点银行行**进 Edit Account Holder Details → 一路 Next（全预填）→ Certification 勾选（真实点击）→ Add。
 79. **财务提交的 2FA 闭环**：勾完 Certification 点 Add → `PUT /ppm/v1/2fa/.../banks/<id>` 首次 401 → 页面自动 `POST /olympus/v1/mfaChallenges` 弹「Two-Factor Authentication Required」六位码框 → 用户输码 → 重放 PUT 200 → **银行与 Paid Apps 双双 Processing**。验证码只有用户能看，输完即通。
 80. **沙盒拉不到商品的头号根因是 Paid Apps 协议未生效**（对 #62 的四轮修正）：协议 Pending User Info / Processing 时 `Product.products` 直接返回空，症状与 IAP 传播延迟一模一样。「商店暂时连不上」超 24h → 先查 Business 页协议状态，把银行/协议修完自然出价，别死等传播。
+81. **2.1 Information Needed 的第 1 项就是真机录屏**（2026-09 胖龙实战）：模板 6 项=①physical device 录屏（最新系统、必须从启动 App 开始、典型流程）②目的与受众③功能访问说明④外部服务清单（无则 none）⑤地区差异确认⑥受监管材料。**别靠记忆默写模板**——先在页面里全选复制留言原文（点正文文本拿到焦点再 cmd+a/cmd+c；焦点停在折叠按钮上时复制的是剪贴板旧值）。首提时 App 审核信息的附件位就该挂录屏，等拒审再补要多花一整天。
+82. **读 ASC 页面逐字原文的正确姿势**：AX 值全被 Chrome 截断（"…"），视觉转录会漏段落（实测漏掉录屏整条）。可靠路=点击消息正文 → `cmd+a`+`cmd+c` → `read_clipboard`，拿到完整 6 项 + Prevent Common Issues 全文。
+83. **给真机装演示包绕过「No Accounts」**：Xcode 无账号会话时自动签名建不出含 iCloud 的 dev profile。若运行时有守卫（设置页「没登录会静默跳过」），直接换空 entitlements 出包：`flutter build ipa --release --export-method development` + `devicectl device install app`，录完还原 entitlements（git 干净即证明）。
+84. **镜像驱动的真相（2026-09 二次实测修正 #47 手动路线）**：JXA CGEvent 直点**时灵时不灵**（点击/滑动都随机失效）；**CUA 窗口路由点击/drag 稳定可用**（app_ref+coordinate，occluder 也拦不住）；iOS 系统边缘手势（返回滑、上滑回主屏）在镜像里**都打不进去**——视频流程别设计 exit 手势，翻到最后一页停住即可。列表条目的可点区可能只有左侧文本列（x<120），行中间点击无响应——按 App 实测热点坐标驱动，别假设整行可点。
+85. **screencapture 的 -R 区域截屏在这台 macOS 上直接报错**（"could not create image from rect"，全程如此）：一律全屏截 + PIL crop。窗口级读画面用 CUA get_app_state 的 raster（无遮挡渗入），本地 -R 截屏会被用户正开着的编辑器窗口污染、误导 OCR 判断。
+86. **screencapture -v 源是 VFR 且时间戳漂移**（标称 130s 实际 121s）：直接按墙钟秒数 -ss 切段会错位甚至空段（-ss 放 -i 前时 -to 语义还变）。正确流程：先整条转 CFR 母版（`-vf "fps=30,setpts=N/(30*TB)"`），再在母版上 `-ss/-to` 放 `-i` 后输出端切段，最后 concat。fps=1 抽帧的帧号=母版秒数，可当切割点索引。
+87. **用户活跃的桌面=地雷阵**：录屏/点击期间用户的编辑器、Kimi 窗口会反复挪进镜像窗口区域。本地截屏被污染≠事件被拦（CUA 窗口路由照常穿透）；但每次取坐标要用 CUA 窗口 raster，别信本地截屏的 OCR。
+88. **caffeinate 用 `&` 起会被 zsh HUP 掉**（表现为断言消失→displaysleep 20s 生效→录屏黑屏+镜像 Connection Paused）：必须 `nohup caffeinate -disu -t N >/dev/null 2>&1 & disown`，且每次录制前 `pmset -g assertions | grep caffeinate` 复核。
+89. **手机锁屏/被碰 → 镜像 Connection Paused**：窗口中部出现 Resume 按钮（JXA 全局坐标点它即可恢复）。用户在场时直接问一句比猜状态快；解锁涉及凭据，永远不代输。
+90. **卸载重装后 App 图标不回原位**（落进 App Library 的「最近添加」文件夹）：录启动流程要么翻资源库开文件夹（文件夹图标在 label 上方，别点 label），要么录前手动把图标拖回主屏。文件夹内图标=label 正上方 ~30pt。
+91. **ASC 回复编辑器全链路**（Chrome）：回复按钮只在留言**完全展开**后渲染（折叠开关点两次：一次收起一次全开）；正文=点 textarea 聚焦后 cmd+v 粘贴（React onChange 正常触发，字符计数亮起）；附件=「附加文件」→ 原生面板（CUA surface 变 open_panel）→ Cmd+Shift+G → set_value 完整路径 → return → Open → 等「正在处理...」变文件名、回复按钮由灰转亮再点。发送后验证三件套：消息计数 +1、正文出现在线程、`消息附件：<文件名>` + 下载按钮。
+92. **Notes 字段在版本页而非提审详情页**：textarea 备注 → cmd+a+cmd+v 替换 → 保存按钮由灰变亮再点 → 按钮回到禁用=已持久化。改字段时「更新审核」按钮会暂时禁用，保存后恢复，属正常联动别慌。
+
+
+## 三连拒修复 + 无 GUI 截图管线（2026-09-22）
+
+93. **换构建让 REJECTED 版本自动回 PREPARE_FOR_SUBMISSION**：被拒后不用走「Update Review → Resubmit」按钮链——ASC API PATCH 版本换 build + versionString 即回到可编辑可提交态，直接重新走提交。whatsNew 例外：App 从未上架时该字段全程 409 锁定（首版没有「新功能」概念），跳过即可。
+94. **资产级 API key 的截图盲区**：appScreenshotSets 不给 GET_COLLECTION（只 CREATE/DELETE/GET_INSTANCE）。找已有 set 走 `GET /v1/appStoreVersionLocalizations/{id}?include=appScreenshotSets`。iPad 13" 档位枚举是 `APP_IPAD_PRO_3GEN_129`（不是 13INCH 字样）；uploadOperations[].requestHeaders 是**数组** [{name,value}] 不是字典。崩溃残留的「已预留未上传」截图必须 DELETE（按 imageAsset 有无判断哪个是孤儿），再 PATCH set 的 appScreenshots 关系定顺序。
+95. **描述文件不含新证书的秒修**：证书重签发后旧 profile 导出 IPA 报 "doesn't include signing certificate"。`security find-certificate -p | openssl x509 -serial` 拿真实序列号（find-identity 显示的是 SHA1 指纹，别拿去 filter）→ ASC API 建 profile（bundleIds + certificates 关系）→ `security cms -D` 解出 UUID 装 `~/Library/MobileDevice/Provisioning Profiles/`。全程 3 个 API 调用。
+96. **Simulator 窗口宽度=设备 size class**（iOS 26）：拖窄窗口 iPad 直接变 compact 走手机布局，别拿窗口内容当设备真相；**唯一可信的是 `simctl io screenshot` framebuffer**（分辨率恒定）。多设备窗口互叠 + 窗口渲染会整体黑掉（GPU bug，erase/重启均不救），但**输入通道照常**：framebuffer 里按颜色 blob 定位控件 → 窗口几何换算（窗口 bounds + 设备 pt×scale + 标题栏高）→ CGEvent 盲点 → framebuffer 验证状态变化。大按钮容错高先打它校准映射，小控件失败了别恋战换帧。
+97. **同机双 agent 并发=诡异之源**：另一个会话在装旧构建、开设置 sheet、挪窗口，会让你的截屏/检测反复自相矛盾（framebuffer 与窗口内容对不上、装好的 app 变旧版）。凡状态矛盾先查 `simctl get_app_container` 里 Info.plist 的版本号，且每次交互后用 framebuffer 闭环验证，别信中间快照。
