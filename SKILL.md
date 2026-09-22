@@ -38,7 +38,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 1. **身份与标识**：确认团队 → 定 bundle id（反向域名，建议和官网域名对应，如域名 `grove.example.studio` → bundle id `studio.example.grove`）→ 开发者门户注册 App ID（explicit）→ ASC 建 App 记录。
 2. **官网三页**：首页 / 隐私政策 / 支持页，挂自定义域名。见 `references/website-privacy-page.md`（含 Vercel 自定义域名的大坑）。
 3. **构建上传**：`xcodebuild archive` + `-exportArchive`。见 `references/xcode-build-upload.md`。**新 bundle id 首次导出必须带 `-allowProvisioningUpdates`**。
-4. **ASC 元数据**：版本页（描述/关键词/技术支持 URL/营销 URL/版权/发布方式/审核备注/联系信息）、截图（iPhone 6.9" 槽 + iPad 13" 槽，6.5" 自动继承 6.9"）。完整清单见 `references/metadata-checklist.md`。
+4. **ASC 元数据**：版本页（描述/关键词/技术支持 URL/营销 URL/版权/发布方式/审核备注/联系信息）、截图（iPhone 6.9" 槽 + iPad 13" 槽，6.5" 自动继承 6.9"）。完整清单见 `references/metadata-checklist.md`。**提交前先跑 `scripts/metadata-precheck.py` 扫元数据**（Apple 商标词=FAIL/占位词等=WARN；规则与权威来源见 `references/metadata-precheck.md`）——一次 5.2.5 拒审（副标题含 iPhone/iPad）本可这样拦下。
 5. **App 信息**：副标题、主要/次要类别、年龄分级（分步问卷，或 `PATCH /v1/ageRatingDeclarations` API 直写）、**内容版权声明**。
 6. **App 隐私**：政策 URL + 数据收集问卷。**填完必须点页面顶部的「发布」——「保存」只是草稿，不发布 = 提交时必报错**（见下）。
 7. **定价与供应**：价格等级（免费选 $0.00 价格表；API 可一条龙：`POST /v1/appPriceSchedules` + `POST /v2/appAvailabilities`）、分发方式「公开」、供应国家或地区。**缺价格等级会被提审校验拦截**。
@@ -46,7 +46,7 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 9. **提交**：版本页「添加以供审核」→ 创建草稿提交 → 「提交以供审核」→ 状态变「正在等待审核」。官方口径审核最多约 48 小时，结果邮件通知。**此两步必须网页**：`appStoreVersionSubmissions` 对 API Key 只有 DELETE 权限（Admin 也不行）。提审校验的已知硬前置：隐私已「发布」、内容版权已声明、价格等级已选——缺哪个校验信息会点名哪个。
 10. **发布后动作**（可选）：TestFlight 内部群组 + 测试员 + 真机装启；手动发布模式下过审后需再点一次「发布」才真正上架。
 11. **收款链路**（卖 IAP / 付费 App 必做）：签 Paid Apps 协议后依次配 银行账户（CNAPS 五行向导）→ Add user info → 证件核验 → 税表两张（W-8BEN + Certificate）→ 810 号令，全部 Active 后协议才 Active、收入才能结算。完整顺序与税务口径见 `references/banking-tax-compliance.md`。
-12. **被拒回复**（Guideline 2.1 Information Needed 等）：先修问题传新构建（被拒版本可换构建）→ 真机演示录屏（iPhone Mirroring 窗口 + `screencapture -v -l`，见参考）→ 提审详情页 Reply to App Review（六项说明 + 附件）+ Notes 同步精简版 → 回复即自动恢复审核。完整流程见 `references/rejection-reply.md`。
+12. **被拒回复**（Guideline 2.1 Information Needed 等）：先修问题传新构建（被拒版本可换构建）→ 真机演示录屏（iPhone Mirroring 窗口 + `screencapture -v -l`，见参考）→ 提审详情页 Reply to App Review（六项说明 + 附件）+ Notes 同步精简版 → 仅回复未换构建时审核自动恢复；换过构建必须 Update Review + Resubmit 才回 Waiting for Review。完整流程见 `references/rejection-reply.md`。
 
 ## 国内安卓市场（延伸能力）
 
@@ -92,6 +92,8 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 - `references/headless-signing.md` — 无头签名上传管线：API Key 建证书/描述文件 + 免口令临时钥匙串 + 手动签名导出 + altool 上传（2026-09 二次实战，CLI 账号会话无解时的主路线）
 - `references/banking-tax-compliance.md` — 收款链路：银行账户（CNAPS）+ 证件核验 + W-8BEN/税表 + 中国 810 号令；状态依赖图与 ppm API 探测（2026-09 三次实战）
 - `references/rejection-reply.md` — 2.1 拒审回复全流程：换构建、Notes、真机演示录屏（iPhone Mirroring 唯一可靠路线 + 无 UITest 工程的手动驱动/环境加固）、点击光圈叠加、隐私自查、附件上传（2026-09 四次实战）
+- `references/metadata-precheck.md` — 送审前元数据自查：Apple 商标规则（5.2.5）+ fastlane precheck 分类借鉴 + 权威资源清单
+- `scripts/metadata-precheck.py` — 送审前元数据扫描（Apple 产品词=FAIL，占位/未来功能/其他平台=WARN）
 - `references/website-privacy-page.md` — 官网三页 + Vercel 自定义域名
 - `references/cn-android-markets.md` — 国内安卓市场上架全流程：主体资格（小米个人关闭检测）、阿里云 APP 备案（规则/流程/证件外省主体冲突三板斧）、软著 AI 承诺新规、market flavor 渠道包工程、签名钥匙 Bitwarden 托管、官网 APK 分发（微信/纯血鸿蒙/国产 ROM 安装坎）、华为 AGC 控制台自动化坑、时间线（2026-09 实战）
 - `references/pitfalls.md` — 完整踩坑清单
