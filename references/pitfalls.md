@@ -160,3 +160,7 @@
 98. **ASC React 表单读值三源陷阱**：`getByRole().textContent()` 返回的是 DOM **初始文本**不是当前 value——用它做 fill 前的基底会「凭空丢段落」（实测误判 SCREEN RECORDING 段被删，其实 value 完好）。真相三源：domSnapshot（读 value）、`locator.evaluate(el => el.value)`、fill 后的字符计数器。校验长文本写入一律 `el.value`，别信 textContent。
 99. **拒审重提的端到端分工**（2026-09-22 全流程实测）：**API 做全部脏活**——改副标题（在 appInfoLocalizations，不在版本层级）、描述/宣传文本（appStoreVersionLocalizations）、传截图、换构建（版本自动回 PREPARE_FOR_SUBMISSION，提交单里「版本+IAP」两项自动跟着指向新 build，无需重建）。**浏览器只做三件事**：①版本页 Notes 补 RESUBMISSION NOTE 前言并修正过时口径（Save 灰→亮→点→回灰=已持久化）②Resolution Center 回复 ③Resubmit。注意资产级 API key 不给 `appStoreVersionSubmissions` CREATE——最终提交只能走登录会话；会话过期表现是 `/login?...authResult=FAILED`，用户重登后从 /apps 继续即可。版本页的「Update Review」按钮就是跳转 reviewsubmissions 详情页；Resubmit 点击后按钮 disabled+progressbar→整按钮消失，成功判据是两项都变 Waiting for Review（再拿 `/v1/appStoreVersions` API 复核）。
 100. **Resolution Center 回复编辑器细节**：入口在拒绝信正文下方「Reply to App Review」按钮；编辑器是 `textbox "Reply"`（4000 字符上限）；**发送按钮也叫 "Reply"**，且页面上另有 generic "Reply" 区块标题——locator 必须 `exact: true` 防多匹配。发送成功三件套：Messages 计数 +1、正文出现在线程、编辑器 DOM 消失。
+
+## 商标与元数据类（2026-09 第五次实战：5.2.5 拒审）
+
+52. **副标题禁用 iPhone/iPad 等 Apple 产品字样（Guideline 5.2.5）**：副标题写「iPhone 与 iPad 上的 XX 客户端」这类措辞会被 5.2.5 Legal - Intellectual Property 拒审（暗示 Apple 背书）。名称/副标题/关键词都别用 Apple 产品名；描述正文里的兼容性表述（如「适配 iPhone 窄屏」）也建议一并清理避免下轮再挑。元数据修复后同样要走 Update Review + Resubmit 才回 Waiting for Review。
