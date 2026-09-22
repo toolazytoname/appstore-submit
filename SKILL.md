@@ -52,6 +52,13 @@ description: 端到端把 iOS App 提交到 App Store 审核的实战流程：�
 
 同一套「商店提交 + 浏览器自动化 + 合规材料」经验覆盖国内安卓市场：华为 AGC（个人实名、建应用拿 AppID、提审材料）、阿里云 APP 备案（商店硬前置，关键路径 2–4 周）、market 双变体渠道包、官网 APK 分发。触发词如「上架华为」「小米市场」「APP 备案」「国内安卓商店」。全部规则、坑与时间线见 `references/cn-android-markets.md`（2026-09 实战复盘）。
 
+
+## 提交门禁（每次提审/重提必须执行，缺一不可）
+
+1. **precheck 证据**：`python3 scripts/metadata-precheck.py <元数据>` 必须退出码 0（WARN 需逐条人工确认）；**输出贴进工作记录**作为证据，贴不出 = 没跑 = 不许提。
+2. **权威源回查触发器**：出现新拒审时，按拒审号回查权威原文（[App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) / [商标指南](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html)），确认解法后有新坑回写本 skill——这是词表与规则的更新回路。
+3. 常规提交**不需要**重读权威源全文：自动扫描（脚本）+ 本 skill 已提炼的规则（源自权威源）+ 被拒回查，三层足够。
+
 ## 关键纪律
 
 - **每一步保存后重载复核**：ASC 表单偶发静默丢失，重载确认持久化再往下走。
